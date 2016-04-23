@@ -3,46 +3,46 @@ import urwid
 
 class Main(object):
     def __init__(self):
+        self.palette = [
+            ('header', 'white', 'dark green', 'bold'),
+            ('tile', 'dark gray', 'white'),
+            ('edit', 'black', 'light gray'),
+            ('qbutton', 'white', 'dark red')
+        ]
         self.build_widgets()
-
-    palette = [
-        ('header', 'white', 'dark green', 'bold'),
-        ('tile', 'dark grey', 'white'),
-        ('edit', 'light grey', 'dark green')
-    ]
 
     # Widgets
     def create_header(self, header):
         widget = urwid.Columns([
-            urwid.AttrWrap(urwid.Text(header), 'header'),
-            urwid.Button('x', on_press=self.quit_on_clicked)
+            urwid.AttrWrap(urwid.Text(header, align='center'), 'header'),
+            ('weight', 0.05, urwid.AttrWrap(urwid.Button('x', on_press=self.quit_on_clicked), 'qbutton'))
         ])
+        print(widget.contents)
         return widget
 
     def create_edit(self, label, text, on_change):
         widget = urwid.Edit(label, text, multiline=False)
         urwid.connect_signal(widget, 'change', on_change)
-        on_change(widget, text)
         widget = urwid.AttrWrap(widget, 'edit')
         return widget
 
     def create_tile(self):
-        widget = urwid.LineBox(urwid.Filler(urwid.Text('', align='left')))
+        widget = urwid.LineBox(urwid.Filler(urwid.Text('', align='left'), valign='top'))
         widget = urwid.AttrWrap(widget, 'tile')
         return widget
 
     # Events
     def edit_change_event(self, widget, text):
-        pass
+        self.tile1.base_widget.set_text(text)
 
     def quit_on_clicked(self, button):
         raise urwid.ExitMainLoop()
 
     def build_widgets(self):
         self.header = self.create_header('My Urwid Application')
-        self.edit = self.create_edit('>', '', self.edit_change_event)
         self.tile1 = self.create_tile()
         self.tile2 = self.create_tile()
+        self.edit = self.create_edit('> ', '', self.edit_change_event)
 
     # View
     def build_view(self):
@@ -58,19 +58,9 @@ class Main(object):
 
     def run(self):
         urwid.MainLoop(
-            self.build_view()
+            self.build_view(),
+            palette=self.palette
         ).run()
-
-
-class Input(urwid.Edit):
-    def __init__(self):
-        super().__init__('> ')
-        self.multiline = False
-
-    def keypress(self, size, key):
-        if key != 'enter':
-            return super().keypress(size, key)
-        self.set_edit_text('')
 
 
 if __name__ == '__main__':
