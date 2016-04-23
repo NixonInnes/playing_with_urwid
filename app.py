@@ -2,13 +2,15 @@ import urwid
 
 
 class Input(urwid.Edit):
-    def __init__(self, label, text):
+    def __init__(self, label, text, on_return):
         super().__init__(label, text)
         self.multiline = False
+        self.on_return = on_return
 
     def keypress(self, size, key):
         if key == 'enter':
-
+            self.on_return(self.get_edit_text())
+            self.set_edit_text('')
         if not self.valid_char(key):
             return super().keypress(size, key)
 
@@ -31,12 +33,10 @@ class Main(object):
             urwid.AttrWrap(urwid.Text(header, align='center'), 'header'),
             ('weight', 0.05, urwid.AttrWrap(urwid.Button('x', on_press=self.quit_on_clicked), 'qbutton'))
         ])
-        print(widget.contents)
         return widget
 
-    def create_edit(self, label, text, on_change):
-        widget = Input(label, text)
-        urwid.connect_signal(widget, 'change', on_change)
+    def create_edit(self, label, text, on_return):
+        widget = Input(label, text, on_return)
         widget = urwid.AttrWrap(widget, 'edit')
         return widget
 
@@ -46,6 +46,10 @@ class Main(object):
         return widget
 
     # Events
+    def edit_on_return(self, text):
+        text = self.tile1.base_widget.text + '\n' + text
+        self.tile1.base_widget.set_text(text)
+
     def edit_change_event(self, widget, text):
         self.tile1.base_widget.set_text(text)
 
@@ -56,7 +60,7 @@ class Main(object):
         self.header = self.create_header('My Urwid Application')
         self.tile1 = self.create_tile()
         self.tile2 = self.create_tile()
-        self.edit = self.create_edit('> ', '', self.edit_change_event)
+        self.edit = self.create_edit('> ', '', self.edit_on_return)
 
     # View
     def build_view(self):
