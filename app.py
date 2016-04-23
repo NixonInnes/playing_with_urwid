@@ -1,6 +1,20 @@
 import urwid
 
 
+class Input(urwid.Edit):
+    def __init__(self, label, text):
+        super().__init__(label, text)
+        self.multiline = False
+
+    def keypress(self, size, key):
+        if key == 'enter':
+
+        if not self.valid_char(key):
+            return super().keypress(size, key)
+
+        self.insert_text(key)
+
+
 class Main(object):
     def __init__(self):
         self.palette = [
@@ -21,7 +35,7 @@ class Main(object):
         return widget
 
     def create_edit(self, label, text, on_change):
-        widget = urwid.Edit(label, text, multiline=False)
+        widget = Input(label, text)
         urwid.connect_signal(widget, 'change', on_change)
         widget = urwid.AttrWrap(widget, 'edit')
         return widget
