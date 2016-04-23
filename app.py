@@ -1,3 +1,4 @@
+import os
 import urwid
 
 
@@ -13,7 +14,6 @@ class Input(urwid.Edit):
             self.set_edit_text('')
         if not self.valid_char(key):
             return super().keypress(size, key)
-
         self.insert_text(key)
 
 
@@ -35,7 +35,7 @@ class Main(object):
         ])
         return widget
 
-    def create_edit(self, label, text, on_return):
+    def create_input(self, label, text, on_return):
         widget = Input(label, text, on_return)
         widget = urwid.AttrWrap(widget, 'edit')
         return widget
@@ -46,12 +46,16 @@ class Main(object):
         return widget
 
     # Events
-    def edit_on_return(self, text):
+    def cli_on_return(self, text):
         text = self.tile1.base_widget.text + '\n' + text
         self.tile1.base_widget.set_text(text)
 
-    def edit_change_event(self, widget, text):
-        self.tile1.base_widget.set_text(text)
+    def fload_on_return(self, fname):
+        if not os.path.isfile(fname):
+            self.tile2.base_widget.set_text('File Not Found.')
+            return
+        with open(fname) as file:
+            self.tile2.base_widget.set_text(file.read())
 
     def quit_on_clicked(self, button):
         raise urwid.ExitMainLoop()
@@ -60,17 +64,21 @@ class Main(object):
         self.header = self.create_header('My Urwid Application')
         self.tile1 = self.create_tile()
         self.tile2 = self.create_tile()
-        self.edit = self.create_edit('> ', '', self.edit_on_return)
+        self.cli = self.create_input('> ', '', self.cli_on_return)
+        self.fload = self.create_input('file: ', '', self.fload_on_return)
 
     # View
     def build_view(self):
         view = urwid.Frame(
-            urwid.Columns([
-                self.tile1,
-                self.tile2
+            urwid.Pile([
+                (1, urwid.Filler(self.fload)),
+                urwid.Columns([
+                    self.tile1,
+                    self.tile2
+                ]),
             ]),
             header=self.header,
-            footer=self.edit
+            footer=self.cli
         )
         return view
 
