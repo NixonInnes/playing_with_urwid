@@ -1,5 +1,6 @@
-import os
+import socket
 import urwid
+from threading import Thread
 
 
 class Input(urwid.Edit):
@@ -19,6 +20,7 @@ class Input(urwid.Edit):
 
 class Main(object):
     def __init__(self):
+        self.sock = None
         self.palette = [
             ('header', 'white', 'dark green', 'bold'),
             ('tile', 'dark gray', 'white'),
@@ -27,7 +29,21 @@ class Main(object):
         ]
         self.build_widgets()
 
-    # Widgets
+    # Connection
+    def connect(self, host, port):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.sock:
+                self.update_screen('Connecting to %s:%s...' % (host, port))
+                self.sock.connect((host, port))
+                while True:
+                    data = str(self.sock.recv(1024), 'utf-8')
+                    self.update_screen(data)
+                self.sock.close()
+                self.update_screen('Connection closed.')
+        except ConnectionRefusedError:
+            self.update_screen('[ERROR] Connection Refused.')
+
+    # Define Widgets
     def create_header(self, header):
         widget = urwid.Columns([
             urwid.AttrWrap(urwid.Text(header, align='center'), 'header'),
@@ -45,36 +61,43 @@ class Main(object):
         widget = urwid.AttrWrap(widget, 'tile')
         return widget
 
-    # Events
+    # Define Events
     def cli_on_return(self, text):
-        text = self.tile1.base_widget.text + '\n' + text
-        self.tile1.base_widget.set_text(text)
+        text_ = self.history.base_widget.text + '\n' + text
+        self.history.base_widget.set_text(text_)
+        if self.sock:
+            self.sock.send(bytes(text, 'utf-8'))
 
-    def fload_on_return(self, fname):
-        if not os.path.isfile(fname):
-            self.tile2.base_widget.set_text('File Not Found.')
+    def address_on_return(self, address):
+        try:
+            host, port = address.split(':')
+        except Exception as e:
+            self.update_screen('{msg}\n{error}'.format(msg='Unable to parse address', error=e))
             return
-        with open(fname) as file:
-            self.tile2.base_widget.set_text(file.read())
+        self.connection = Thread(target=self.connect, args=(host, int(port)))
+        self.connection.start()
 
     def quit_on_clicked(self, button):
+        if self.sock:
+            self.sock.close()
         raise urwid.ExitMainLoop()
 
+    # Create Widgets
     def build_widgets(self):
-        self.header = self.create_header('My Urwid Application')
-        self.tile1 = self.create_tile()
-        self.tile2 = self.create_tile()
+        self.header = self.create_header('NixCat')
+        self.screen = self.create_tile()
+        self.history = self.create_tile()
         self.cli = self.create_input('> ', '', self.cli_on_return)
-        self.fload = self.create_input('file: ', '', self.fload_on_return)
+        self.address = self.create_input('address: ', '', self.address_on_return)
 
-    # View
+    # Build View
     def build_view(self):
         view = urwid.Frame(
             urwid.Pile([
-                (1, urwid.Filler(self.fload)),
+                (1, urwid.Filler(self.address)),
                 urwid.Columns([
-                    self.tile1,
-                    self.tile2
+                    self.screen,
+                    ('weight', 0.2, self.history)
                 ]),
             ]),
             header=self.header,
@@ -82,6 +105,13 @@ class Main(object):
         )
         return view
 
+    # Helper methods
+    def update_screen(self, text):
+        self.screen.base_widget.set_text(
+            self.screen.base_widget.text + text
+        )
+
+    # Run
     def run(self):
         urwid.MainLoop(
             self.build_view(),
